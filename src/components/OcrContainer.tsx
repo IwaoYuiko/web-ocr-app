@@ -1,0 +1,396 @@
+import React, { useState, useEffect } from 'react';
+import { initOcrEngine, recognizeText } from '../utils/ocrEngine';
+import { pinyin } from 'pinyin-pro';
+
+// 1. 翻訳データの定義
+const translations = {
+  en: {
+    title: 'High-Accuracy Offline Chinese OCR',
+    initializing: 'Initializing Chinese OCR Engine (PP-OCRv5)...',
+    selectImage: 'Select Image (JPG, JPEG, PNG)',
+    executeOcr: 'Execute OCR',
+    recognizing: 'Recognizing...',
+    resultLabel: 'Recognition Result (Chinese):',
+    copy: 'Copy Result',
+    copied: 'Copied!',
+    pinyinLabel: 'Pinyin Display (Ruby):',
+    colorTone: 'Color Code by Tone',
+    playAudio: 'Play Audio 🔊',
+    stopAudio: 'Stop ⏹️',
+    errInit: 'Failed to initialize OCR engine. Please reload the page or try again in a better network environment.',
+    errType: 'Supported image formats are JPG, JPEG, and PNG only.',
+    errProcess: 'An error occurred during text recognition.',
+    errCopy: 'Failed to copy to clipboard.',
+  },
+  ja: {
+    title: '高精度 オフライン中国語OCR',
+    initializing: '中国語OCRエンジン（PP-OCRv5）を初期化中...',
+    selectImage: '画像を選択（JPG, JPEG, PNG）',
+    executeOcr: 'OCRを実行する',
+    recognizing: '認識中...',
+    resultLabel: '認識結果 (中国語):',
+    copy: '結果をコピー',
+    copied: 'コピー完了！',
+    pinyinLabel: 'ピンイン表示 (フリガナ):',
+    colorTone: '声調ごとに色分け',
+    playAudio: '音声再生 🔊',
+    stopAudio: '停止 ⏹️',
+    errInit: 'OCRエンジンの初期化に失敗しました。ページを再読み込み（リロード）するか、通信環境の良い場所で再度お試しください。',
+    errType: '対応している画像形式は JPG, JPEG, PNG のみです。',
+    errProcess: '文字認識処理中にエラーが発生しました。',
+    errCopy: 'クリップボードへのコピーに失敗しました。',
+  }
+};
+
+/**
+ * ピンインの文字列から声調を判定し、対応する色を返す関数
+ */
+const getToneColor = (pinyinText: string, isColorEnabled: boolean): string => {
+  if (!isColorEnabled) {
+    return '#4b5563';
+  }
+
+  // 第1声の母音記号（ā ē ī ō ū ǖ）
+  if (/[āēīōūǖ]/.test(pinyinText)) return '#ef4444'; // 赤
+  
+  // 第2声の母音記号（á é í ó ú ǘ）
+  if (/[áéíóúǘ]/.test(pinyinText)) return '#22c55e'; // 緑
+  
+  // 第3声の母音記号（ǎ ě ǐ ǒ ǔ ǚ）
+  if (/[ǎěǐǒǔǚ]/.test(pinyinText)) return '#3b82f6'; // 青
+  
+  // 第4声の母音記号（à è ì ò ù ǜ）
+  if (/[àèìòùǜ]/.test(pinyinText)) return '#a855f7'; // 紫
+
+  // 軽声（記号なし）
+  return '#4b5563'; 
+};
+
+export const OcrContainer: React.FC = () => {
+  // UI言語状態（初期表示は English）
+  const [lang, setLang] = useState<'en' | 'ja'>('en');
+
+  const [image, setImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [ocrText, setOcrText] = useState<string>('');
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  
+  // エラーはキーで管理することで言語切り替え時にメッセージも追従
+  const [errorKey, setErrorKey] = useState<keyof typeof translations['en'] | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [isColorEnabled, setIsColorEnabled] = useState<boolean>(true);
+
+  // 選択中の言語に応じた翻訳オブジェクトを取得
+  const t = translations[lang];
+
+  // コンポーネントマウント時にOCRエンジンを初期化
+  useEffect(() => {
+    let isMounted = true;
+
+    const setupEngine = async () => {
+      try {
+        setIsInitializing(true);
+        setErrorKey(null);
+        await initOcrEngine();
+      } catch (err) {
+        if (isMounted) {
+          setErrorKey('errInit');
+        }
+      } finally {
+        if (isMounted) {
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    setupEngine();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // previewUrl の解放 ＆ 音声強制停止
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, [previewUrl]);
+
+  // 画像が選択された時の処理（jpeg, png 限定）
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      setErrorKey('errType');
+      return;
+    }
+
+    setErrorKey(null);
+    setImage(file);
+    setOcrText('');
+    setCopied(false);
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  // OCR実行処理
+  const handleOcrExecute = async () => {
+    if (!image) return;
+
+    try {
+      setIsProcessing(true);
+      setErrorKey(null);
+      setOcrText('');
+
+      const result = await recognizeText(image);
+      setOcrText(result);
+    } catch (err) {
+      setErrorKey('errProcess');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 結果をクリップボードにコピー
+  const handleCopyText = async () => {
+    if (!ocrText) return;
+    try {
+      await navigator.clipboard.writeText(ocrText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      setErrorKey('errCopy');
+    }
+  };
+
+  // 中国語の音声再生（Web Speech API）
+  const handleSpeak = () => {
+    if (!ocrText) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(ocrText);
+    utterance.lang = 'zh-CN';
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // 音声停止（Web Speech API）
+  const handleStop = () => {
+    window.speechSynthesis.cancel();
+  };
+
+  return (
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
+      
+      {/* 画面最上部の Language セレクトボックス */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
+        <label style={{ marginRight: '8px', fontSize: '14px', alignSelf: 'center', fontWeight: 'bold' }}>Language:</label>
+        <select
+          value={lang}
+          onChange={(e) => setLang(e.target.value as 'en' | 'ja')}
+          style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc', cursor: 'pointer', fontSize: '14px' }}
+        >
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+
+      {/* 初期化ステータスによる条件分岐 */}
+      {isInitializing ? (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <p>{t.initializing}</p>
+        </div>
+      ) : (
+        <>
+          <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>{t.title}</h2>
+
+          {errorKey && (
+            <div style={{ padding: '10px', backgroundColor: '#ffe6e6', color: '#cc0000', borderRadius: '4px', marginBottom: '15px' }}>
+              {t[errorKey]}
+            </div>
+          )}
+
+          {/* 1. 画像選択 */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>{t.selectImage}</label>
+            <input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png" 
+              onChange={handleImageChange}
+              disabled={isProcessing}
+            />
+          </div>
+
+          {/* 画像プレビューとOCR実行ボタン */}
+          {previewUrl && (
+            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <img 
+                src={previewUrl} 
+                alt="Preview" 
+                style={{ maxWidth: '100%', maxHeight: '300px', display: 'block', margin: '0 auto 15px', borderRadius: '4px', border: '1px solid #ccc' }} 
+              />
+              
+              {/* 2. OCR実行 */}
+              <button
+                onClick={handleOcrExecute}
+                disabled={isProcessing}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '16px',
+                  backgroundColor: isProcessing ? '#ccc' : '#0070f3',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  width: '100%'
+                }}
+              >
+                {isProcessing ? t.recognizing : t.executeOcr}
+              </button>
+            </div>
+          )}
+
+          {/* 3. 認識結果表示 & ピンイン表示エリア */}
+          {ocrText !== '' && (
+            <div style={{ marginTop: '25px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ fontWeight: 'bold' }}>{t.resultLabel}</label>
+                
+                {/* 操作ボタン群 */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={handleSpeak}
+                    style={{
+                      padding: '4px 12px',
+                      backgroundColor: '#0070f3',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {t.playAudio}
+                  </button>
+                  <button
+                    onClick={handleStop}
+                    style={{
+                      padding: '4px 12px',
+                      backgroundColor: '#ef4444',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {t.stopAudio}
+                  </button>
+                  <button
+                    onClick={handleCopyText}
+                    style={{
+                      padding: '4px 12px',
+                      backgroundColor: copied ? '#22c55e' : '#e5e7eb',
+                      color: copied ? '#fff' : '#000',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {copied ? t.copied : t.copy}
+                  </button>
+                </div>
+              </div>
+              
+              {/* 既存のテキストエリア */}
+              <textarea
+                readOnly
+                value={ocrText}
+                rows={6}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace',
+                  fontSize: '15px',
+                  backgroundColor: '#f9f9f9',
+                  marginBottom: '25px'
+                }}
+              />
+
+              {/* ピンイン表示エリア */}
+              <div style={{ marginTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontWeight: 'bold' }}>{t.pinyinLabel}</label>
+                  
+                  <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px', cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={isColorEnabled}
+                      onChange={(e) => setIsColorEnabled(e.target.checked)}
+                      style={{ marginRight: '6px', cursor: 'pointer' }}
+                    />
+                    {t.colorTone}
+                  </label>
+                </div>
+                
+                <div style={{
+                  width: '100%',
+                  padding: '15px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                  backgroundColor: '#fff',
+                  fontSize: '19px',
+                  lineHeight: '2.6em',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all'
+                }}>
+                  {ocrText.split('\n').map((line, lineIdx) => (
+                    <div key={lineIdx} style={{ minHeight: '1.5em' }}>
+                      {Array.from(line).map((char, charIdx) => {
+                        const isChineseChar = /[\u4e00-\u9fa5]/.test(char);
+                        
+                        if (isChineseChar) {
+                          const pyArray = pinyin(char, { toneType: 'symbol', type: 'array' });
+                          const py = pyArray[0] || '';
+                          const toneColor = getToneColor(py, isColorEnabled);
+                          
+                          return (
+                            <ruby key={charIdx} style={{ marginRight: '2px' }}>
+                              {char}
+                              <rt style={{ 
+                                fontSize: '0.55em', 
+                                color: toneColor, 
+                                fontWeight: isColorEnabled && toneColor !== '#4b5563' ? 'bold' : 'normal',
+                                userSelect: 'none' 
+                              }}>
+                                {py}
+                              </rt>
+                            </ruby>
+                          );
+                        }
+                        return <span key={charIdx}>{char}</span>;
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
