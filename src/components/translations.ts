@@ -1,0 +1,42 @@
+// src/components/translations.ts
+
+export const translations = {
+  en: {
+    title: 'High-Accuracy Offline Chinese OCR',
+    privacyNotice: '🔒 Completely free. Images are not uploaded externally. All OCR processing is executed entirely within your device.',
+    initializing: 'Initializing Chinese OCR Engine (PP-OCRv5)...',
+    selectImage: 'Select Image (JPG, JPEG, PNG)',
+    executeOcr: 'Execute OCR',
+    recognizing: 'Recognizing...',
+    resultLabel: 'Recognition Result (Chinese):',
+    copy: 'Copy Result',
+    copied: 'Copied!',
+    pinyinLabel: 'Pinyin Display (Ruby):',
+    colorTone: 'Color Code by Tone',
+    playAudio: 'Play Audio 🔊',
+    stopAudio: 'Stop ⏹️',
+    errInit: 'Failed to initialize OCR engine. Please reload the page or try again in a better network environment.',
+    errType: 'Supported image formats are JPG, JPEG, and PNG only.',
+    errProcess: 'An error occurred during text recognition.',
+    errCopy: 'Failed to copy to clipboard.',
+  },
+  ja: {
+    title: '高精度 オフライン中国語OCR',
+    privacyNotice: '🔒 完全無料。画像は外部へ送信されません。OCR処理はすべてお使いの端末内で実行されます。',
+    initializing: '中国語OCRエンジン（PP-OCRv5）を初期化中...',
+    selectImage: '画像を選択（JPG, JPEG, PNG）',
+    executeOcr: 'OCRを実行する',
+    recognizing: '認識中...',
+    resultLabel: '認識結果 (中国語):',
+    copy: '結果をコピー',
+    copied: 'コピー完了！',
+    pinyinLabel: 'ピンイン表示 (フリガナ):',
+    colorTone: '声調ごとに色分け',
+    playAudio: '音声再生 🔊',
+    stopAudio: '停止 ⏹️',
+    errInit: 'OCRエンジンの初期化に失敗しました。ページを再読み込み（リロード）するか、通信環境の良い場所で再度お試しください。',
+    errType: '対応している画像形式は JPG, JPEG, PNG のみです。',
+    errProcess: '文字認識処理中にエラーが発生しました。',
+    errCopy: 'クリップボードへのコピーに失敗しました。',
+  }
+};

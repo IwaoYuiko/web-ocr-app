@@ -1,46 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { initOcrEngine, recognizeText } from '../utils/ocrEngine';
 import { pinyin } from 'pinyin-pro';
-
-// 1. 翻訳データの定義
-const translations = {
-  en: {
-    title: 'High-Accuracy Offline Chinese OCR',
-    initializing: 'Initializing Chinese OCR Engine (PP-OCRv5)...',
-    selectImage: 'Select Image (JPG, JPEG, PNG)',
-    executeOcr: 'Execute OCR',
-    recognizing: 'Recognizing...',
-    resultLabel: 'Recognition Result (Chinese):',
-    copy: 'Copy Result',
-    copied: 'Copied!',
-    pinyinLabel: 'Pinyin Display (Ruby):',
-    colorTone: 'Color Code by Tone',
-    playAudio: 'Play Audio 🔊',
-    stopAudio: 'Stop ⏹️',
-    errInit: 'Failed to initialize OCR engine. Please reload the page or try again in a better network environment.',
-    errType: 'Supported image formats are JPG, JPEG, and PNG only.',
-    errProcess: 'An error occurred during text recognition.',
-    errCopy: 'Failed to copy to clipboard.',
-  },
-  ja: {
-    title: '高精度 オフライン中国語OCR',
-    initializing: '中国語OCRエンジン（PP-OCRv5）を初期化中...',
-    selectImage: '画像を選択（JPG, JPEG, PNG）',
-    executeOcr: 'OCRを実行する',
-    recognizing: '認識中...',
-    resultLabel: '認識結果 (中国語):',
-    copy: '結果をコピー',
-    copied: 'コピー完了！',
-    pinyinLabel: 'ピンイン表示 (フリガナ):',
-    colorTone: '声調ごとに色分け',
-    playAudio: '音声再生 🔊',
-    stopAudio: '停止 ⏹️',
-    errInit: 'OCRエンジンの初期化に失敗しました。ページを再読み込み（リロード）するか、通信環境の良い場所で再度お試しください。',
-    errType: '対応している画像形式は JPG, JPEG, PNG のみです。',
-    errProcess: '文字認識処理中にエラーが発生しました。',
-    errCopy: 'クリップボードへのコピーに失敗しました。',
-  }
-};
+import { translations } from './translations'; // さきほど分割したファイル
 
 /**
  * ピンインの文字列から声調を判定し、対応する色を返す関数
@@ -52,18 +13,18 @@ const getToneColor = (pinyinText: string, isColorEnabled: boolean): string => {
 
   // 第1声の母音記号（ā ē ī ō ū ǖ）
   if (/[āēīōūǖ]/.test(pinyinText)) return '#ef4444'; // 赤
-  
+
   // 第2声の母音記号（á é í ó ú ǘ）
   if (/[áéíóúǘ]/.test(pinyinText)) return '#22c55e'; // 緑
-  
+
   // 第3声の母音記号（ǎ ě ǐ ǒ ǔ ǚ）
   if (/[ǎěǐǒǔǚ]/.test(pinyinText)) return '#3b82f6'; // 青
-  
+
   // 第4声の母音記号（à è ì ò ù ǜ）
   if (/[àèìòùǜ]/.test(pinyinText)) return '#a855f7'; // 紫
 
   // 軽声（記号なし）
-  return '#4b5563'; 
+  return '#4b5563';
 };
 
 export const OcrContainer: React.FC = () => {
@@ -75,7 +36,7 @@ export const OcrContainer: React.FC = () => {
   const [ocrText, setOcrText] = useState<string>('');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  
+
   // エラーはキーで管理することで言語切り替え時にメッセージも追従
   const [errorKey, setErrorKey] = useState<keyof typeof translations['en'] | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
@@ -189,10 +150,10 @@ export const OcrContainer: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      
+
       {/* 画面最上部の Language セレクトボックス */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-        <label style={{ marginRight: '8px', fontSize: '14px', alignSelf: 'center', fontWeight: 'bold' }}>Language:</label>
+        <label style={{ marginRight: '8px', fontSize: '14px', alignSelf: 'center', fontWeight: 'bold', color: '#334155' }}>Language:</label>
         <select
           value={lang}
           onChange={(e) => setLang(e.target.value as 'en' | 'ja')}
@@ -206,11 +167,13 @@ export const OcrContainer: React.FC = () => {
       {/* 初期化ステータスによる条件分岐 */}
       {isInitializing ? (
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <p>{t.initializing}</p>
+          <p style={{ color: '#4b5563' }}>{t.initializing}</p>
         </div>
       ) : (
         <>
-          <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>{t.title}</h2>
+          <h2 style={{ textAlign: 'center', marginBottom: '24px', color: '#1e293b', fontSize: '24px', fontWeight: 'bold' }}>
+            {t.title}
+          </h2>
 
           {errorKey && (
             <div style={{ padding: '10px', backgroundColor: '#ffe6e6', color: '#cc0000', borderRadius: '4px', marginBottom: '15px' }}>
@@ -218,26 +181,45 @@ export const OcrContainer: React.FC = () => {
             </div>
           )}
 
-          {/* 1. 画像選択 */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>{t.selectImage}</label>
-            <input 
-              type="file" 
-              accept=".jpg,.jpeg,.png,image/jpeg,image/png" 
+          {/* 1. 画像選択エリア（Flexboxで中身を中央寄せに設定） */}
+          <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#334155', textAlign: 'center' }}>
+              {t.selectImage}
+            </label>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
               onChange={handleImageChange}
               disabled={isProcessing}
+              style={{ color: '#334155', marginBottom: '16px' }} // 元のサイズを保ったまま中央配置
             />
+
+            {/* 安心お知らせ枠（幅いっぱいに広げて綺麗に整列） */}
+            <div style={{
+              color: '#0f766e',
+              backgroundColor: '#f0fdfa',
+              border: '1px solid #ccfbf1',
+              padding: '12px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              lineHeight: '1.5',
+              textAlign: 'left',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
+              {t.privacyNotice}
+            </div>
           </div>
 
           {/* 画像プレビューとOCR実行ボタン */}
           {previewUrl && (
             <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-              <img 
-                src={previewUrl} 
-                alt="Preview" 
-                style={{ maxWidth: '100%', maxHeight: '300px', display: 'block', margin: '0 auto 15px', borderRadius: '4px', border: '1px solid #ccc' }} 
+              <img
+                src={previewUrl}
+                alt="Preview"
+                style={{ maxWidth: '100%', maxHeight: '300px', display: 'block', margin: '0 auto 15px', borderRadius: '4px', border: '1px solid #ccc' }}
               />
-              
+
               {/* 2. OCR実行 */}
               <button
                 onClick={handleOcrExecute}
@@ -262,8 +244,8 @@ export const OcrContainer: React.FC = () => {
           {ocrText !== '' && (
             <div style={{ marginTop: '25px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ fontWeight: 'bold' }}>{t.resultLabel}</label>
-                
+                <label style={{ fontWeight: 'bold', color: '#334155' }}>{t.resultLabel}</label>
+
                 {/* 操作ボタン群 */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
@@ -310,7 +292,7 @@ export const OcrContainer: React.FC = () => {
                   </button>
                 </div>
               </div>
-              
+
               {/* 既存のテキストエリア */}
               <textarea
                 readOnly
@@ -325,6 +307,7 @@ export const OcrContainer: React.FC = () => {
                   fontFamily: 'monospace',
                   fontSize: '15px',
                   backgroundColor: '#f9f9f9',
+                  color: '#1e293b',
                   marginBottom: '25px'
                 }}
               />
@@ -332,9 +315,9 @@ export const OcrContainer: React.FC = () => {
               {/* ピンイン表示エリア */}
               <div style={{ marginTop: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontWeight: 'bold' }}>{t.pinyinLabel}</label>
-                  
-                  <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px', cursor: 'pointer', userSelect: 'none' }}>
+                  <label style={{ fontWeight: 'bold', color: '#334155' }}>{t.pinyinLabel}</label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px', cursor: 'pointer', userSelect: 'none', color: '#334155' }}>
                     <input
                       type="checkbox"
                       checked={isColorEnabled}
@@ -344,7 +327,7 @@ export const OcrContainer: React.FC = () => {
                     {t.colorTone}
                   </label>
                 </div>
-                
+
                 <div style={{
                   width: '100%',
                   padding: '15px',
@@ -352,6 +335,7 @@ export const OcrContainer: React.FC = () => {
                   border: '1px solid #ccc',
                   boxSizing: 'border-box',
                   backgroundColor: '#fff',
+                  color: '#1e293b',
                   fontSize: '19px',
                   lineHeight: '2.6em',
                   whiteSpace: 'pre-wrap',
@@ -361,20 +345,20 @@ export const OcrContainer: React.FC = () => {
                     <div key={lineIdx} style={{ minHeight: '1.5em' }}>
                       {Array.from(line).map((char, charIdx) => {
                         const isChineseChar = /[\u4e00-\u9fa5]/.test(char);
-                        
+
                         if (isChineseChar) {
                           const pyArray = pinyin(char, { toneType: 'symbol', type: 'array' });
                           const py = pyArray[0] || '';
                           const toneColor = getToneColor(py, isColorEnabled);
-                          
+
                           return (
                             <ruby key={charIdx} style={{ marginRight: '2px' }}>
                               {char}
-                              <rt style={{ 
-                                fontSize: '0.55em', 
-                                color: toneColor, 
+                              <rt style={{
+                                fontSize: '0.55em',
+                                color: toneColor,
                                 fontWeight: isColorEnabled && toneColor !== '#4b5563' ? 'bold' : 'normal',
-                                userSelect: 'none' 
+                                userSelect: 'none'
                               }}>
                                 {py}
                               </rt>
@@ -391,6 +375,43 @@ export const OcrContainer: React.FC = () => {
           )}
         </>
       )}
+
+      {/* ライセンス・クレジット表記 */}
+      <footer style={{
+        marginTop: '60px',
+        paddingTop: '20px',
+        borderTop: '1px solid #e2e8f0',
+        textAlign: 'center',
+        fontSize: '12px',
+        color: '#64748b',
+        lineHeight: '1.6'
+      }}>
+        <a
+          href="https://github.com/IwaoYuiko/web-ocr-app/blob/main/README.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          📖 使い方
+        </a>
+
+        {' | '}
+
+        <a
+          href="https://github.com/IwaoYuiko/web-ocr-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          💻 GitHub
+        </a>
+
+        <div>
+          <p style={{ fontWeight: 'bold', margin: '0 0 2px 0', color: '#475569' }}>Powered by:</p>
+          <p style={{ margin: 0, color: '#64748b' }}>
+            PaddleOCR PP-OCRv5
+          </p>
+        </div>
+      </footer>
+
     </div>
   );
 };
