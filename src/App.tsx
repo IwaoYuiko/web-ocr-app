@@ -1,4 +1,3 @@
-import React from 'react';
 import { OcrContainer } from './components/OcrContainer';
 
 function App() {
