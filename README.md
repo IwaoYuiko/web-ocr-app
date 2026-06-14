@@ -1,8 +1,16 @@
 # Offline Chinese OCR with Pinyin
 
-A simple Chinese OCR tool that runs entirely in your web browser.
+A simple Chinese OCR web app that runs entirely in your browser.
 
 Convert images containing Chinese text into editable text and automatically display Pinyin pronunciation.
+
+## 🌐 Web App
+
+**Try it online:**
+
+https://iwaoyuiko.github.io/web-ocr-app/
+
+🔒 Images never leave your device. All processing happens locally in your browser.
 
 ## Features
 
@@ -25,13 +33,9 @@ Convert images containing Chinese text into editable text and automatically disp
 
 All processing happens locally in your browser.
 
-Your images are **not uploaded to any server**.
+Your images are **never uploaded to any server**.
 
-## Screenshot
-
-![Screenshot](images/screenshot.png)
-
-## Technology
+## Tech Stack
 
 ### OCR
 
@@ -55,7 +59,7 @@ This project is released under the MIT License.
 
 ## Third-Party Components
 
-This project uses PP-OCRv5 models from PaddleOCR.
+This project uses PP-OCRv5 models derived from PaddleOCR.
 
 PaddleOCR is licensed under the Apache License 2.0.
 
@@ -64,7 +68,7 @@ PaddleOCR is licensed under the Apache License 2.0.
 This project is built with the help of the following open-source projects:
 
 * PaddleOCR
-* ONNX Runtime
+* ONNX Runtime Web
 * ppu-paddle-ocr
 * pinyin-pro
 
