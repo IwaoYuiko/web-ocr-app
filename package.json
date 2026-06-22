@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:android": "tsc -b && vite build --base=./ --outDir=dist-android",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
